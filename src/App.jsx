@@ -11,6 +11,7 @@ export default function App() {
   const [form, setForm] = useState({ title: '', filename: '', language: '', tags: '', content: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [previewHtml, setPreviewHtml] = useState(null)
 
   const fetchSnippets = async () => {
     try {
@@ -56,6 +57,12 @@ export default function App() {
     }
   }
 
+  const isHtmlSnippet = (s) => {
+    const lang = (s.language || '').toLowerCase()
+    const file = (s.filename || '').toLowerCase()
+    return lang === 'html' || file.endsWith('.html') || /<\s*html[\s>]/i.test(s.content)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 relative">
       <Header name="Anon Code Share" github="https://github.com/" />
@@ -81,9 +88,14 @@ export default function App() {
 
                 <textarea value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} placeholder="Paste your code here" rows={10} className="w-full px-3 py-2 rounded bg-slate-900/70 border border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-3 font-mono text-sm"></textarea>
 
-                <button disabled={loading} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-medium shadow-lg shadow-blue-600/30 transition">
-                  {loading ? 'Submitting...' : 'Publish snippet'}
-                </button>
+                <div className="flex items-start justify-between gap-4">
+                  <button disabled={loading} className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-medium shadow-lg shadow-blue-600/30 transition">
+                    {loading ? 'Submitting...' : 'Publish snippet'}
+                  </button>
+                  <p className="text-xs text-slate-400">
+                    HTML is displayed safely as code. Use Preview to render it in a sandbox.
+                  </p>
+                </div>
               </form>
 
               <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6">
@@ -98,20 +110,30 @@ export default function App() {
                   )}
                   {snippets.map((s)=> (
                     <div key={s.id} className="rounded-xl border border-slate-700/40 bg-slate-900/60 overflow-hidden">
-                      <div className="p-4 border-b border-slate-700/40 flex items-center justify-between">
+                      <div className="p-4 border-b border-slate-700/40 flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <h4 className="font-semibold text-white">{s.title}</h4>
                           <p className="text-xs text-slate-400">{s.language || 'plain'} {s.filename ? `• ${s.filename}` : ''}</p>
                         </div>
-                        {s.filename && (
-                          <a
-                            href={`data:text/plain;charset=utf-8,${encodeURIComponent(s.content)}`}
-                            download={s.filename}
-                            className="text-sm px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60"
-                          >
-                            Download
-                          </a>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {isHtmlSnippet(s) && (
+                            <button
+                              onClick={() => setPreviewHtml(s.content)}
+                              className="text-sm px-3 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-700/40"
+                            >
+                              Preview HTML
+                            </button>
+                          )}
+                          {s.filename && (
+                            <a
+                              href={`data:text/plain;charset=utf-8,${encodeURIComponent(s.content)}`}
+                              download={s.filename}
+                              className="text-sm px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60"
+                            >
+                              Download
+                            </a>
+                          )}
+                        </div>
                       </div>
                       <pre className="p-4 text-xs overflow-auto max-h-60 bg-slate-950/70"><code>{s.content}</code></pre>
                     </div>
@@ -125,6 +147,23 @@ export default function App() {
         <Projects />
         <Contact email="you@example.com" />
       </main>
+
+      {previewHtml !== null && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl h-[80vh] rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-900/80">
+              <p className="text-sm text-slate-300">Sandboxed HTML preview</p>
+              <button onClick={() => setPreviewHtml(null)} className="text-sm px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700">Close</button>
+            </div>
+            <iframe
+              title="html-preview"
+              className="w-full h-full bg-white"
+              sandbox="allow-forms allow-same-origin"
+              srcDoc={previewHtml}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
